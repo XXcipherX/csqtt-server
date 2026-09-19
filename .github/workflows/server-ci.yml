@@ -1,0 +1,99 @@
+name: Server CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "rust-server/**"
+      - "shared/**"
+      - ".github/workflows/server-ci.yml"
+  pull_request:
+    paths:
+      - "rust-server/**"
+      - "shared/**"
+      - ".github/workflows/server-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  RUST_HOST_TARGET: x86_64-unknown-linux-gnu
+
+concurrency:
+  group: server-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Unit tests, Clippy and release build
+    runs-on: ubuntu-26.04
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@1.97.1
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust-server -> target
+          key: server
+
+      - name: Verify locked dependencies
+        working-directory: rust-server
+        run: cargo metadata --locked --format-version 1 --no-deps > /dev/null
+
+      - name: Check formatting
+        working-directory: rust-server
+        run: cargo fmt --all -- --check
+
+      - name: Run Clippy
+        working-directory: rust-server
+        run: cargo clippy --locked --target "$RUST_HOST_TARGET" --all-targets -- -D warnings
+
+      - name: Run unit and protocol tests
+        working-directory: rust-server
+        run: cargo test --locked --target "$RUST_HOST_TARGET" --all-targets
+
+      - name: Build release server
+        working-directory: rust-server
+        run: cargo build --locked --release --target "$RUST_HOST_TARGET" --bin csqtt
+
+      - name: Verify protocol revision command
+        working-directory: rust-server
+        shell: bash
+        run: |
+          set -euo pipefail
+          revision="$("./target/${RUST_HOST_TARGET}/release/csqtt" --protocol-revision)"
+          expected="$(sed -nE 's/^pub const WIRE_PROTOCOL_REVISION: &str = "([^"]+)";.*/\1/p' ../shared/wire_protocol.rs)"
+          test -n "$expected"
+          test "$revision" = "$expected"
+
+  vulnerabilities:
+    name: Rust vulnerability scan
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@1.97.1
+
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+          fallback: none
+
+      - name: Audit server dependencies
+        working-directory: rust-server
+        run: cargo audit

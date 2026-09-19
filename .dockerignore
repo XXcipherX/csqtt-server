@@ -1,0 +1,9 @@
+*
+!Dockerfile
+!LICENSE
+!rust-server/
+!rust-server/Cargo.toml
+!rust-server/Cargo.lock
+!rust-server/*.rs
+!shared/
+!shared/*.rs

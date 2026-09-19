@@ -1,0 +1,186 @@
+name: Build and push Docker image
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Docker image tag
+        required: true
+        default: latest
+      also_latest:
+        description: Also push the latest tag when tag is not latest
+        type: boolean
+        required: true
+        default: true
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: docker-image-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE_NAME: ghcr.io/xxcipherx/csqtt-server
+
+jobs:
+  prepare:
+    name: Validate image tags
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    outputs:
+      image_tags: ${{ steps.tags.outputs.value }}
+
+    steps:
+      - name: Prepare image tags
+        id: tags
+        shell: bash
+        env:
+          IMAGE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          ALSO_LATEST: ${{ github.event_name == 'push' || inputs.also_latest }}
+        run: |
+          set -euo pipefail
+
+          tag="${IMAGE_TAG#v}"
+          if ! [[ "$tag" =~ ^[A-Za-z0-9_.-]+$ ]]; then
+            echo "Invalid tag: $tag"
+            echo "Use only letters, digits, dot, underscore and dash."
+            exit 1
+          fi
+
+          {
+            echo "value<<EOF"
+            echo "${IMAGE_NAME}:${tag}"
+            if [ "$ALSO_LATEST" = "true" ] && [ "$tag" != "latest" ]; then
+              echo "${IMAGE_NAME}:latest"
+            fi
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build ${{ matrix.name }} image
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: AMD64
+            arch: amd64
+            platform: linux/amd64
+            runner: ubuntu-26.04
+          - name: ARM64
+            arch: arm64
+            platform: linux/arm64
+            runner: ubuntu-26.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image by digest
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: ${{ matrix.platform }}
+          pull: true
+          outputs: type=image,name=${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=csqtt-docker-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=csqtt-docker-${{ matrix.arch }}
+
+      - name: Export image digest
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          digest="${{ steps.build.outputs.digest }}"
+          if ! [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "Invalid image digest: $digest"
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/digests"
+          touch "$RUNNER_TEMP/digests/${digest#sha256:}"
+
+      - name: Upload image digest
+        uses: actions/upload-artifact@v7
+        with:
+          name: image-digest-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+          overwrite: true
+
+  publish:
+    name: Publish multi-platform image
+    needs:
+      - prepare
+      - build
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Download image digests
+        uses: actions/download-artifact@v8
+        with:
+          pattern: image-digest-*
+          path: ${{ runner.temp }}/digests
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and verify multi-platform image
+        shell: bash
+        env:
+          IMAGE_TAGS: ${{ needs.prepare.outputs.image_tags }}
+        run: |
+          set -euo pipefail
+
+          mapfile -t digests < <(find "$RUNNER_TEMP/digests" -maxdepth 1 -type f -printf '%f\n' | sort)
+          if [ "${#digests[@]}" -ne 2 ]; then
+            echo "Expected two platform digests, found ${#digests[@]}."
+            exit 1
+          fi
+
+          sources=()
+          for digest in "${digests[@]}"; do
+            if ! [[ "$digest" =~ ^[0-9a-f]{64}$ ]]; then
+              echo "Invalid image digest: $digest"
+              exit 1
+            fi
+            sources+=("${IMAGE_NAME}@sha256:${digest}")
+          done
+
+          mapfile -t tags <<< "$IMAGE_TAGS"
+          tag_args=()
+          for tag in "${tags[@]}"; do
+            [ -n "$tag" ] && tag_args+=(--tag "$tag")
+          done
+          [ "${#tag_args[@]}" -gt 0 ] || { echo "No image tags were prepared."; exit 1; }
+
+          docker buildx imagetools create "${tag_args[@]}" "${sources[@]}"
+          docker buildx imagetools inspect "${tags[0]}"
