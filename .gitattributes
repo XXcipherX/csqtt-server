@@ -1,0 +1,17 @@
+* text=auto
+*.bat text eol=crlf
+*.md text eol=lf
+*.ps1 text eol=crlf
+*.rs text eol=lf
+*.sh text eol=lf
+*.toml text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+Dockerfile text eol=lf
+LICENSE text eol=lf
+
+# Preserve imported files byte for byte, including original line endings.
+rust-server/** -text
+shared/** -text
+scripts/** -text
+app/src/main/assets/domains.txt -text

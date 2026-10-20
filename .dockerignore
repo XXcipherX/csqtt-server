@@ -1,0 +1,14 @@
+*
+!Dockerfile
+!LICENSE
+!rust-server/
+!rust-server/Cargo.toml
+!rust-server/Cargo.lock
+!rust-server/*.rs
+!shared/
+!shared/*.rs
+!app/
+!app/src/
+!app/src/main/
+!app/src/main/assets/
+!app/src/main/assets/domains.txt

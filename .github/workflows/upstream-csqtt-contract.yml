@@ -1,0 +1,80 @@
+name: Upstream CSQTT 2.5.0 contract
+
+on:
+  push:
+    branches:
+      - "2.5.0"
+    paths:
+      - "shared/**"
+      - "app/src/main/assets/domains.txt"
+      - "rust-server/main.rs"
+      - "rust-server/model.rs"
+      - "rust-server/protocol.rs"
+      - "tests/upstream-csqtt-server-contract.rs"
+      - ".github/workflows/upstream-csqtt-contract.yml"
+  pull_request:
+    branches:
+      - "2.5.0"
+    paths:
+      - "shared/**"
+      - "app/src/main/assets/domains.txt"
+      - "rust-server/main.rs"
+      - "rust-server/model.rs"
+      - "rust-server/protocol.rs"
+      - "tests/upstream-csqtt-server-contract.rs"
+      - ".github/workflows/upstream-csqtt-contract.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  RUST_HOST_TARGET: x86_64-unknown-linux-gnu
+
+concurrency:
+  group: upstream-csqtt-contract-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  upstream-contract:
+    name: amurcanov/csqtt v2.5.0 protocol contract
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout extracted server contract
+        uses: actions/checkout@v7
+
+      - name: Checkout upstream v2.5.0 client
+        uses: actions/checkout@v7
+        with:
+          repository: amurcanov/csqtt
+          ref: fd936ef087c34cc46f26111dc2361f43b8b03c07 # v2.5.0
+          path: .client-contract/upstream
+          sparse-checkout: |
+            rust-client
+            shared
+          persist-credentials: false
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@1.97.1
+
+      - name: Cache upstream client dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: .client-contract/upstream/rust-client -> target
+          key: upstream-csqtt-contract-2.5.0
+
+      - name: Inject independent server contract fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp app/src/main/assets/domains.txt .client-contract/upstream/domains.txt
+          cp tests/upstream-csqtt-server-contract.rs \
+            .client-contract/upstream/rust-client/server_contract_tests.rs
+          printf '\n#[cfg(test)]\nmod server_contract_tests;\n' >> \
+            .client-contract/upstream/rust-client/main.rs
+
+      - name: Verify upstream v2.5.0 protocol contract
+        working-directory: .client-contract/upstream/rust-client
+        run: cargo test --locked --target "$RUST_HOST_TARGET" --bin client server_contract_

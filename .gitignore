@@ -1,0 +1,4 @@
+/rust-server/target/
+/.client-contract/
+*.log
+*.tmp
