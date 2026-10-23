@@ -1,37 +1,30 @@
 version: 2
 
-updates:
-  - package-ecosystem: docker
-    directory: "/"
+multi-ecosystem-groups:
+  build-environment:
     schedule:
       interval: daily
       time: "04:10"
       timezone: Europe/Moscow
-    open-pull-requests-limit: 20
-    groups:
-      docker-minor-patch:
-        patterns:
-          - "*"
-        update-types:
-          - minor
-          - patch
+
+updates:
+  - package-ecosystem: docker
+    directory: "/"
+    patterns:
+      - "*"
+    multi-ecosystem-group: build-environment
 
   - package-ecosystem: github-actions
     directory: "/"
-    schedule:
-      interval: daily
-      time: "04:20"
-      timezone: Europe/Moscow
-    open-pull-requests-limit: 20
-    groups:
-      actions-minor-patch:
-        patterns:
-          - "*"
-        update-types:
-          - minor
-          - patch
-    ignore:
-      - dependency-name: dtolnay/rust-toolchain
+    patterns:
+      - "*"
+    multi-ecosystem-group: build-environment
+
+  - package-ecosystem: rust-toolchain
+    directory: "/rust-server"
+    patterns:
+      - "*"
+    multi-ecosystem-group: build-environment
 
   - package-ecosystem: cargo
     directory: "/rust-server"

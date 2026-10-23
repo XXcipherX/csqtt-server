@@ -74,7 +74,14 @@ Contract workflows проверяют control plane, stream repair, CQF1 framing
 - `Docker CI` — сборка OCI images для `amd64` и native `arm64` без публикации;
 - `Build and push Docker image` — публикация multi-platform image вручную или по тегу `v*`;
 - `Upstream CSQTT contract` и `Current iOS CSQTT contract` — тесты совместимости клиентов;
-- `Workflow lint` и `Dependency Review` — проверка GitHub Actions и изменений зависимостей.
+- `Workflow lint` — проверка GitHub Actions;
+- `Rust toolchain CI` — проверка единой закреплённой версии Rust в toolchain-файле, Docker и workflows.
+
+### Обновления зависимостей
+
+Dependabot ежедневно в 04:10 по Москве проверяет Rust toolchain, Docker images и GitHub Actions и объединяет их обновления в один PR. Версия Rust остаётся закреплённой; `Rust toolchain CI` выявляет расхождения между `rust-server/rust-toolchain.toml`, Dockerfile и шагами установки Rust в workflows. Если версии различаются, их необходимо согласовать в том же PR перед слиянием.
+
+Прямые и косвенные Cargo-зависимости проверяются отдельно по понедельникам в 04:30 по Москве, minor/patch обновления объединяются в одну группу. Dependabot security updates создаёт PR с доступными исправлениями известных уязвимостей. Обновления сливаются вручную после успешных проверок CI.
 
 ## Структура репозитория
 
