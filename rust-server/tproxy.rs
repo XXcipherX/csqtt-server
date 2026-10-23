@@ -1931,7 +1931,9 @@ mod linux {
             quotas: quotas.clone(),
             buffers: buffers.clone(),
         };
-        let async_fd = match AsyncFd::new(socket.clone()) {
+        // SAFETY: The retained Arc keeps the socket open for the registration's
+        // lifetime, and UdpTproxy never replaces its socket or descriptor.
+        let async_fd = match unsafe { AsyncFd::register(socket.clone()) } {
             Ok(fd) => fd,
             Err(error) => {
                 log(
