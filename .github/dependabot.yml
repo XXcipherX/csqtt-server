@@ -35,6 +35,8 @@ updates:
 
   - package-ecosystem: cargo
     directory: "/rust-server"
+    allow:
+      - dependency-type: all
     schedule:
       interval: weekly
       day: monday
