@@ -47,7 +47,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@1.99.1
+        uses: dtolnay/rust-toolchain@1.120.0
 
       - name: Cache upstream client dependencies
         uses: Swatinem/rust-cache@v2
