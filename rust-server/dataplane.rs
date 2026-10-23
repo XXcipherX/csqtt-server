@@ -363,7 +363,7 @@ impl<C> DataplaneHandle<C> {
 }
 
 fn decrement_queue_len(queued: &AtomicUsize) {
-    let _ = queued.fetch_update(Ordering::AcqRel, Ordering::Acquire, |value| {
+    let _ = queued.try_update(Ordering::AcqRel, Ordering::Acquire, |value| {
         value.checked_sub(1)
     });
 }

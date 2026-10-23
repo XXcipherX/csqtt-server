@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 amurcanov
 # SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 
-ARG RUST_VERSION=1.97.1
+ARG RUST_VERSION=1.99.1
 
 FROM rust:${RUST_VERSION}-trixie AS builder
 

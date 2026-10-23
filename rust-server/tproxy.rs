@@ -535,7 +535,7 @@ impl BufferClassPool {
             return Some(buffer);
         }
         self.allocated
-            .fetch_update(Ordering::AcqRel, Ordering::Acquire, |allocated| {
+            .try_update(Ordering::AcqRel, Ordering::Acquire, |allocated| {
                 (allocated < self.limit).then_some(allocated + 1)
             })
             .ok()?;
@@ -549,7 +549,7 @@ impl BufferClassPool {
         }
         if self
             .retained
-            .fetch_update(Ordering::AcqRel, Ordering::Acquire, |retained| {
+            .try_update(Ordering::AcqRel, Ordering::Acquire, |retained| {
                 (retained < self.retained_limit).then_some(retained + 1)
             })
             .is_err()
@@ -730,7 +730,7 @@ impl OpeningBufferPool {
         let storage = BytesMut::zeroed(len);
         let capacity = storage.capacity();
         self.allocated_bytes
-            .fetch_update(Ordering::AcqRel, Ordering::Acquire, |allocated| {
+            .try_update(Ordering::AcqRel, Ordering::Acquire, |allocated| {
                 allocated
                     .checked_add(capacity)
                     .filter(|next| *next <= PROXY_OPENING_BUFFER_LIMIT)

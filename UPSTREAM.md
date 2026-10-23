@@ -17,7 +17,7 @@ Android-приложение, `rust-client`, Gradle-проекты и клиен
 
 1. значения `WIRE_PROTOCOL_REVISION` и control messages;
 2. CQF1 framing, stream repair и RTP AEAD vectors;
-3. контрактов с актуальным `main` [amurcanov/csqtt](https://github.com/amurcanov/csqtt);
+3. контрактов с клиентом [amurcanov/csqtt v2.1.9](https://github.com/amurcanov/csqtt/tree/v2.1.9), закреплённым в upstream contract workflow;
 4. контрактов с актуальным `main` [anton48/vk-turn-proxy-ios](https://github.com/anton48/vk-turn-proxy-ios);
 5. Docker image contract, используемого [XXcipherX/vkturn-vps-setup](https://github.com/XXcipherX/vkturn-vps-setup).
 

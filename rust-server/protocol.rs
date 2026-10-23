@@ -2115,7 +2115,7 @@ impl ProtocolEngine {
     }
 
     fn session_removed(&self) {
-        let _ = ACTIVE_SESSIONS_GAUGE.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |value| {
+        let _ = ACTIVE_SESSIONS_GAUGE.try_update(Ordering::Relaxed, Ordering::Relaxed, |value| {
             value.checked_sub(1)
         });
         self.publish_session_gauges();

@@ -1,4 +1,4 @@
-name: Current upstream CSQTT contract
+name: Upstream CSQTT contract
 
 on:
   push:
@@ -30,7 +30,7 @@ concurrency:
 
 jobs:
   current-upstream-contract:
-    name: Current amurcanov/csqtt protocol contract
+    name: amurcanov/csqtt v2.1.9 protocol contract
     runs-on: ubuntu-26.04
     timeout-minutes: 30
 
@@ -38,22 +38,22 @@ jobs:
       - name: Checkout extracted server contract
         uses: actions/checkout@v7
 
-      - name: Checkout current upstream client
+      - name: Checkout supported upstream client
         uses: actions/checkout@v7
         with:
           repository: amurcanov/csqtt
-          ref: main
+          ref: 446293aa2e873ac5323ef6fd2316d9b81d966c11 # v2.1.9
           path: .client-contract/upstream
           persist-credentials: false
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@1.97.1
+        uses: dtolnay/rust-toolchain@1.99.1
 
       - name: Cache upstream client dependencies
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: .client-contract/upstream/rust-client -> target
-          key: upstream-csqtt-contract
+          key: upstream-csqtt-contract-v2.1.9
 
       - name: Inject independent server contract fixture
         shell: bash
@@ -64,6 +64,6 @@ jobs:
           printf '\n#[cfg(test)]\nmod server_contract_tests;\n' >> \
             .client-contract/upstream/rust-client/main.rs
 
-      - name: Verify current upstream protocol contract
+      - name: Verify upstream v2.1.9 protocol contract
         working-directory: .client-contract/upstream/rust-client
         run: cargo test --locked --bin client server_contract_

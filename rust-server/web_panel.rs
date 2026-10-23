@@ -585,7 +585,10 @@ async fn refresh_credentials_report(state: &WebState) -> Result<(), String> {
 /// completed.  The in-memory state remains available if persistence fails, but
 /// callers receive a clear 5xx instead of a misleading 200 that vanishes on
 /// the next restart.
-async fn wait_for_persistence(state: &WebState, revision: u64) -> Result<(), Response> {
+async fn wait_for_persistence(
+    state: &WebState,
+    revision: u64,
+) -> Result<(), (StatusCode, &'static str)> {
     match tokio::time::timeout(
         Duration::from_secs(15),
         state.app.db_persistence.wait(revision),
@@ -598,14 +601,12 @@ async fn wait_for_persistence(state: &WebState, revision: u64) -> Result<(), Res
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "failed to persist change",
-            )
-                .into_response())
+            ))
         }
         Err(_) => Err((
             StatusCode::GATEWAY_TIMEOUT,
             "database persistence is taking too long; refresh before retrying",
-        )
-            .into_response()),
+        )),
     }
 }
 
@@ -1179,7 +1180,7 @@ async fn clients_create(
         (password, expires, revision)
     };
     if let Err(response) = wait_for_persistence(&state, result.2).await {
-        return response;
+        return response.into_response();
     }
     let reload_error = refresh_credentials_report(&state).await.err();
 
@@ -1236,7 +1237,7 @@ async fn client_update(
         state.app.db_persistence.submit(db.clone())
     };
     if let Err(response) = wait_for_persistence(&state, revision).await {
-        return response;
+        return response.into_response();
     }
     if let Err(message) = refresh_credentials_report(&state).await {
         let warning = format!("saved but reload failed: {message}");
@@ -1255,7 +1256,7 @@ async fn client_toggle(State(state): State<WebState>, Path(password): Path<Strin
         state.app.db_persistence.submit(db.clone())
     };
     if let Err(response) = wait_for_persistence(&state, revision).await {
-        return response;
+        return response.into_response();
     }
 
     crate::protocol::drop_password_sessions(&state.app, &password);
@@ -1281,7 +1282,7 @@ async fn client_unbind(State(state): State<WebState>, Path(password): Path<Strin
         }
     };
     if let Err(response) = wait_for_persistence(&state, revision).await {
-        return response;
+        return response.into_response();
     }
 
     crate::protocol::drop_password_sessions(&state.app, &password);
@@ -1299,7 +1300,7 @@ async fn client_delete(State(state): State<WebState>, Path(password): Path<Strin
         state.app.db_persistence.submit(db.clone())
     };
     if let Err(response) = wait_for_persistence(&state, revision).await {
-        return response;
+        return response.into_response();
     }
 
     crate::protocol::drop_password_sessions(&state.app, &password);
@@ -1600,7 +1601,7 @@ async fn logs_toggle(
         state.app.db_persistence.submit(db.clone())
     };
     if let Err(response) = wait_for_persistence(&state, revision).await {
-        return response;
+        return response.into_response();
     }
     state
         .app
@@ -1701,7 +1702,7 @@ async fn local_proxy_create(
         state.app.db_persistence.submit(db.clone())
     };
     if let Err(response) = wait_for_persistence(&state, revision).await {
-        return response;
+        return response.into_response();
     }
     log_event(
         &state.app,
@@ -1751,7 +1752,7 @@ async fn local_proxy_update(
         (was_active, state.app.db_persistence.submit(db.clone()))
     };
     if let Err(response) = wait_for_persistence(&state, revision).await {
-        return response;
+        return response.into_response();
     }
     if was_active {
         state.app.proxy_trigger.notify_one();
@@ -1776,7 +1777,7 @@ async fn local_proxy_delete(State(state): State<WebState>, Path(id): Path<String
         (was_active, state.app.db_persistence.submit(db.clone()))
     };
     if let Err(response) = wait_for_persistence(&state, revision).await {
-        return response;
+        return response.into_response();
     }
     if was_active {
         state.app.proxy_trigger.notify_one();
@@ -1825,7 +1826,7 @@ async fn local_proxy_activate(State(state): State<WebState>, Path(id): Path<Stri
         state.app.db_persistence.submit(db.clone())
     };
     if let Err(response) = wait_for_persistence(&state, revision).await {
-        return response;
+        return response.into_response();
     }
     log_event(
         &state.app,
@@ -1847,7 +1848,7 @@ async fn local_proxy_deactivate(State(state): State<WebState>) -> Response {
         state.app.db_persistence.submit(db.clone())
     };
     if let Err(response) = wait_for_persistence(&state, revision).await {
-        return response;
+        return response.into_response();
     }
     log_event(
         &state.app,

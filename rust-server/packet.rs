@@ -53,7 +53,7 @@ impl PacketPool {
             storage
         } else {
             self.allocated
-                .fetch_update(Ordering::AcqRel, Ordering::Acquire, |allocated| {
+                .try_update(Ordering::AcqRel, Ordering::Acquire, |allocated| {
                     (allocated < self.queue.capacity()).then_some(allocated + 1)
                 })
                 .ok()?;
@@ -81,7 +81,7 @@ impl PacketPool {
         }
         if self
             .retained
-            .fetch_update(Ordering::AcqRel, Ordering::Acquire, |retained| {
+            .try_update(Ordering::AcqRel, Ordering::Acquire, |retained| {
                 (retained < self.retained_limit).then_some(retained + 1)
             })
             .is_err()

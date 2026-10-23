@@ -63,17 +63,17 @@ ghcr.io/xxcipherx/csqtt-server:latest
 
 Текущая версия сервера использует `CSQTT-WIRE-3` и проверяется со следующими клиентами:
 
-- Android: [amurcanov/csqtt](https://github.com/amurcanov/csqtt);
+- Android: [amurcanov/csqtt v2.1.9](https://github.com/amurcanov/csqtt/tree/v2.1.9);
 - iOS: [anton48/vk-turn-proxy-ios](https://github.com/anton48/vk-turn-proxy-ios).
 
-Contract workflows проверяют control plane, stream repair, CQF1 framing и RTP AEAD vectors на актуальных версиях обоих клиентских проектов.
+Contract workflows проверяют control plane, stream repair, CQF1 framing и RTP AEAD vectors на Android-клиенте v2.1.9 и актуальном `main` iOS-клиента.
 
 ## Автоматические проверки
 
 - `Server CI` — форматирование, Clippy, unit/protocol tests, release build, protocol revision и `cargo audit`;
 - `Docker CI` — сборка OCI images для `amd64` и native `arm64` без публикации;
 - `Build and push Docker image` — публикация multi-platform image вручную или по тегу `v*`;
-- `Current upstream CSQTT contract` и `Current iOS CSQTT contract` — тесты совместимости клиентов;
+- `Upstream CSQTT contract` и `Current iOS CSQTT contract` — тесты совместимости клиентов;
 - `Workflow lint` и `Dependency Review` — проверка GitHub Actions и изменений зависимостей.
 
 ## Структура репозитория
