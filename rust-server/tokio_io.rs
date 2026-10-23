@@ -502,7 +502,11 @@ impl TokioIo {
             .up();
         let device = create_tun_device(&config, tun_iface)?;
         device.set_nonblock().context("set TUN nonblocking mode")?;
-        let tun = AsyncFd::new(TunDevice(device)).context("register TUN in tokio")?;
+        // SAFETY: AsyncFd owns the TUN device, so its descriptor remains open and
+        // unchanged for the registration's lifetime.
+        let tun = unsafe { AsyncFd::register(TunDevice(device)) }
+            .map_err(io::Error::from)
+            .context("register TUN in tokio")?;
 
         Ok(Self {
             udp,
